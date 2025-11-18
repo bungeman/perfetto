@@ -781,9 +781,22 @@ bool UnixSocketRaw::SetTxTimeout(uint32_t timeout_ms) {
   }
 #endif
 
-  return setsockopt(*fd_, SOL_SOCKET, SO_SNDTIMEO,
-                    reinterpret_cast<const char*>(&timeout),
-                    sizeof(timeout)) == 0;
+  int res =
+      setsockopt(*fd_, SOL_SOCKET, SO_SNDTIMEO,
+                 reinterpret_cast<const char*>(&timeout), sizeof(timeout));
+#if PERFETTO_BUILDFLAG(PERFETTO_OS_APPLE)
+  // setsockopt(SO_SNDTIMEO) can fail with EINVAL on macOS on newly-accepted
+  // connections due to timing-dependent kernel behavior. sock_setsockopt() is
+  // deprecated
+  // (https://developer.apple.com/documentation/kernel/1396148-sock_setsockopt).
+  // SO_SNDTIMEO is also unreliable across platforms (aosp/1900402) as the
+  // kernel can re-arm timeouts on partial sends. Ignore the error as
+  // tx_timeout_ms_ is used for poll()-based timeouts in SendMsgAllPosix().
+  if (res != 0 && errno == EINVAL) {
+    return true;
+  }
+#endif
+  return res == 0;
 }
 
 bool UnixSocketRaw::SetRxTimeout(uint32_t timeout_ms) {
@@ -797,9 +810,22 @@ bool UnixSocketRaw::SetRxTimeout(uint32_t timeout_ms) {
   timeout.tv_usec = static_cast<decltype(timeout.tv_usec)>(
       (timeout_ms - (timeout_sec * 1000)) * 1000);
 #endif
-  return setsockopt(*fd_, SOL_SOCKET, SO_RCVTIMEO,
-                    reinterpret_cast<const char*>(&timeout),
-                    sizeof(timeout)) == 0;
+  int res =
+      setsockopt(*fd_, SOL_SOCKET, SO_RCVTIMEO,
+                 reinterpret_cast<const char*>(&timeout), sizeof(timeout));
+#if PERFETTO_BUILDFLAG(PERFETTO_OS_APPLE)
+  // setsockopt(SO_SNDTIMEO) can fail with EINVAL on macOS on newly-accepted
+  // connections due to timing-dependent kernel behavior. sock_setsockopt() is
+  // deprecated
+  // (https://developer.apple.com/documentation/kernel/1396148-sock_setsockopt).
+  // SO_SNDTIMEO is also unreliable across platforms (aosp/1900402) as the
+  // kernel can re-arm timeouts on partial sends. Ignore the error as
+  // tx_timeout_ms_ is used for poll()-based timeouts in SendMsgAllPosix().
+  if (res != 0 && errno == EINVAL) {
+    return true;
+  }
+#endif
+  return res == 0;
 }
 
 std::string UnixSocketRaw::GetSockAddr() const {
