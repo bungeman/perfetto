@@ -360,8 +360,8 @@ class SlicesStack(TestSuite):
         """,
         out=Csv("""
         "name","depth","stack_id","stack_id_nonzero"
-        "A",0,640495243103436622,1
-        "B",1,-3831690816380721938,1
+        "A",0,1905114530773834795,1
+        "B",1,6901956697539716495,1
         """))
 
   def test_ancestor_slice_by_stack(self):

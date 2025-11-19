@@ -54,26 +54,20 @@ CREATE PERFETTO VIEW _slice_with_stack_id (
   parent_stack_id LONG
 ) AS
 WITH
-  slice_stack_strings AS (
+  slice_stack_hashes AS (
     SELECT
       s.id,
       coalesce(
         (
           SELECT
-            GROUP_CONCAT(coalesce(category, '') || '|' || name, '|')
+            hash(GROUP_CONCAT(hash(coalesce(category, '') || '|' || name), '|'))
           FROM _slice_ancestor_and_self(s.id)
           ORDER BY
             depth ASC
         ),
-        ''
-      ) AS stack_str
+        0
+      ) AS stack_hash
     FROM slice AS s
-  ),
-  slice_stack_hashes AS (
-    SELECT
-      id,
-      hash(stack_str) AS stack_hash
-    FROM slice_stack_strings
   )
 SELECT
   s.id,
