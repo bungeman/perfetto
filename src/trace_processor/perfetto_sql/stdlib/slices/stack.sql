@@ -53,22 +53,28 @@ CREATE PERFETTO VIEW _slice_with_stack_id (
   -- The stack_id for the parent of this slice. NULL if there is no parent.
   parent_stack_id LONG
 ) AS
-WITH slice_stack_strings AS (
-  SELECT
-    s.id,
-    IFNULL(
-      (SELECT GROUP_CONCAT(COALESCE(category, '') || '|' || name, '|')
-       FROM _slice_ancestor_and_self(s.id)
-       ORDER BY depth ASC),
-      '') AS stack_str
-  FROM slice s
-),
-slice_stack_hashes AS (
-  SELECT
-    id,
-    hash(stack_str) AS stack_hash
-  FROM slice_stack_strings
-)
+WITH
+  slice_stack_strings AS (
+    SELECT
+      s.id,
+      coalesce(
+        (
+          SELECT
+            GROUP_CONCAT(coalesce(category, '') || '|' || name, '|')
+          FROM _slice_ancestor_and_self(s.id)
+          ORDER BY
+            depth ASC
+        ),
+        ''
+      ) AS stack_str
+    FROM slice AS s
+  ),
+  slice_stack_hashes AS (
+    SELECT
+      id,
+      hash(stack_str) AS stack_hash
+    FROM slice_stack_strings
+  )
 SELECT
   s.id,
   s.ts,
@@ -85,16 +91,18 @@ SELECT
   s.thread_instruction_delta,
   sh.stack_hash AS stack_id,
   parent_sh.stack_hash AS parent_stack_id
-FROM slice s
-JOIN slice_stack_hashes sh ON s.id = sh.id
-LEFT JOIN slice_stack_hashes parent_sh ON s.parent_id = parent_sh.id;
+FROM slice AS s
+JOIN slice_stack_hashes AS sh
+  ON s.id = sh.id
+LEFT JOIN slice_stack_hashes AS parent_sh
+  ON s.parent_id = parent_sh.id;
 
 -- Returns all slices that have the given stack_id, along with their ancestors.
 --
 -- The stack_id can be obtained from the _slice_with_stack_id view.
 CREATE PERFETTO FUNCTION _ancestor_slice_by_stack(
-  -- The stack hash to search for.
-  stack_hash LONG
+    -- The stack hash to search for.
+    stack_hash LONG
 )
 RETURNS TABLE (
   -- Slice id.
@@ -121,11 +129,14 @@ RETURNS TABLE (
   thread_dur LONG
 ) AS
 -- Find all slices with the matching stack hash
-WITH matching_slices AS (
-  SELECT id
-  FROM _slice_with_stack_id
-  WHERE stack_id = $stack_hash
-)
+WITH
+  matching_slices AS (
+    SELECT
+      id
+    FROM _slice_with_stack_id
+    WHERE
+      stack_id = $stack_hash
+  )
 -- For each matching slice, get all ancestors and self
 SELECT DISTINCT
   anc.id,
@@ -139,16 +150,18 @@ SELECT DISTINCT
   anc.arg_set_id,
   anc.thread_ts,
   anc.thread_dur
-FROM matching_slices ms
-JOIN _slice_ancestor_and_self(ms.id) anc
-ORDER BY anc.ts ASC;
+FROM matching_slices AS ms
+JOIN _slice_ancestor_and_self(ms.id) AS anc
+  ON TRUE
+ORDER BY
+  anc.ts ASC;
 
 -- Returns all slices that have the given stack_id, along with their descendants.
 --
 -- The stack_id can be obtained from the _slice_with_stack_id view.
 CREATE PERFETTO FUNCTION _descendant_slice_by_stack(
-  -- The stack hash to search for.
-  stack_hash LONG
+    -- The stack hash to search for.
+    stack_hash LONG
 )
 RETURNS TABLE (
   -- Slice id.
@@ -175,11 +188,14 @@ RETURNS TABLE (
   thread_dur LONG
 ) AS
 -- Find all slices with the matching stack hash
-WITH matching_slices AS (
-  SELECT id
-  FROM _slice_with_stack_id
-  WHERE stack_id = $stack_hash
-)
+WITH
+  matching_slices AS (
+    SELECT
+      id
+    FROM _slice_with_stack_id
+    WHERE
+      stack_id = $stack_hash
+  )
 -- For each matching slice, get all descendants and self
 SELECT DISTINCT
   desc.id,
@@ -193,6 +209,8 @@ SELECT DISTINCT
   desc.arg_set_id,
   desc.thread_ts,
   desc.thread_dur
-FROM matching_slices ms
-JOIN _slice_descendant_and_self(ms.id) desc
-ORDER BY desc.ts ASC;
+FROM matching_slices AS ms
+JOIN _slice_descendant_and_self(ms.id) AS desc
+  ON TRUE
+ORDER BY
+  desc.ts ASC;
