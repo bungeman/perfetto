@@ -39,7 +39,7 @@ WITH
         ) AS stack
     FROM span
   )
-SELECT ts, stack FROM tmp WHERE parent_stack_id = 0 ORDER BY TS ASC;
+SELECT ts, stack FROM tmp WHERE parent_stack_id IS NULL ORDER BY TS ASC;
 
 CREATE PERFETTO TABLE perf_stack
 AS

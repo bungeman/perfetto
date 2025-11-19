@@ -271,7 +271,7 @@ class SlicesStack(TestSuite):
         """))
 
   def test_depth_zero_slices_parent_stack_id(self):
-    # Tests that depth 0 slices have parent_stack_id = 0
+    # Tests that depth 0 slices have parent_stack_id = NULL
     return DiffTestBlueprint(
         trace=TextProto(r"""
         packet {
@@ -306,7 +306,7 @@ class SlicesStack(TestSuite):
         """,
         out=Csv("""
         "name","depth","parent_stack_id"
-        "RootSlice",0,0
+        "RootSlice",0,"[NULL]"
         """))
 
   def test_slice_stack_id_computed(self):

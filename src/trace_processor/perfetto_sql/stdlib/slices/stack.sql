@@ -50,7 +50,7 @@ CREATE PERFETTO VIEW _slice_with_stack_id (
   -- A unique identifier obtained from the names and categories of all slices
   -- in this stack. Computed on-demand.
   stack_id LONG,
-  -- The stack_id for the parent of this slice. 0 if there is no parent.
+  -- The stack_id for the parent of this slice. NULL if there is no parent.
   parent_stack_id LONG
 ) AS
 WITH slice_stack_strings AS (
@@ -84,7 +84,7 @@ SELECT
   s.thread_instruction_count,
   s.thread_instruction_delta,
   sh.stack_hash AS stack_id,
-  COALESCE(parent_sh.stack_hash, 0) AS parent_stack_id
+  parent_sh.stack_hash AS parent_stack_id
 FROM slice s
 JOIN slice_stack_hashes sh ON s.id = sh.id
 LEFT JOIN slice_stack_hashes parent_sh ON s.parent_id = parent_sh.id;
